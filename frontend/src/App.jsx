@@ -15,14 +15,17 @@ import Profile from "./pages/Profile";
 export default function App() {
   return (
     <Routes>
+      {/* Open Dashboard directly */}
       <Route
         path="/"
-        element={<Navigate to="/login" replace />}
+        element={<Navigate to="/dashboard" replace />}
       />
 
+      {/* Authentication pages - optional */}
       <Route path="/login" element={<Login />} />
       <Route path="/register" element={<Register />} />
 
+      {/* Main application pages */}
       <Route path="/dashboard" element={<Dashboard />} />
       <Route path="/navigation" element={<Navigation />} />
 
@@ -36,9 +39,10 @@ export default function App() {
       <Route path="/community" element={<Community />} />
       <Route path="/profile" element={<Profile />} />
 
+      {/* Unknown routes */}
       <Route
         path="*"
-        element={<Navigate to="/login" replace />}
+        element={<Navigate to="/dashboard" replace />}
       />
     </Routes>
   );
