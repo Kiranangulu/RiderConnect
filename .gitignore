@@ -1,0 +1,25 @@
+
+# Node.js dependencies
+node_modules/
+frontend/node_modules/
+
+# Frontend build files
+frontend/dist/
+
+# Java backend build files
+backend/target/
+
+# Environment variables and secrets
+.env
+.env.*
+!.env.example
+
+# IntelliJ IDEA settings
+.idea/
+
+# VS Code settings
+.vscode/
+
+# Operating system files
+.DS_Store
+Thumbs.db
