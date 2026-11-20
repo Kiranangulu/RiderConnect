@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import api from "../services/api";
@@ -29,14 +30,22 @@ export default function Register() {
     setLoading(true);
 
     try {
-      await api.post("/auth/register", form);
+      const { platform, ...registrationData } = form;
+
+      await api.post("/auth/register", registrationData);
 
       navigate("/login");
+
     } catch (err) {
+      const errorMessage = err.response?.data;
+
       setError(
-        err.response?.data?.message ||
-        "Registration failed. Please try again."
+        typeof errorMessage === "string"
+          ? errorMessage
+          : errorMessage?.message ||
+            "Registration failed. Please try again."
       );
+
     } finally {
       setLoading(false);
     }
@@ -114,6 +123,7 @@ export default function Register() {
           )}
 
           <button
+            type="submit"
             disabled={loading}
             className="w-full bg-green-600 text-white p-3 rounded-lg hover:bg-green-700 disabled:opacity-50"
           >

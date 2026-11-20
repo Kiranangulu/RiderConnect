@@ -6,19 +6,19 @@ frontend/node_modules/
 # Frontend build files
 frontend/dist/
 
-# Java backend build files
-backend/target/
+# Java / Maven build files
+backend/RiderConnect/target/
 
 # Environment variables and secrets
 .env
 .env.*
 !.env.example
 
-# IntelliJ IDEA settings
-.idea/
 
-# VS Code settings
+# IDE settings
+.idea/
 .vscode/
+*.iml
 
 # Operating system files
 .DS_Store

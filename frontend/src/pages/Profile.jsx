@@ -1,7 +1,10 @@
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
+
 import Sidebar from "../components/Sidebar";
 import Header from "../components/Header";
+import api from "../services/api";
 
 import {
   User,
@@ -14,21 +17,22 @@ import {
   Bell,
   Lock,
   Save,
-  Camera,
   Clock,
   CheckCircle
 } from "lucide-react";
 
 function Profile() {
-  const savedUser = JSON.parse(localStorage.getItem("user") || "{}");
+  const navigate = useNavigate();
 
   const [profile, setProfile] = useState({
-    fullName: savedUser.fullName || savedUser.name || "",
-    email: savedUser.email || "",
-    phone: savedUser.phone || "",
-    platform: savedUser.platform || "BLINKIT",
-    city: savedUser.city || "Visakhapatnam",
-    vehicle: savedUser.vehicle || "Two Wheeler"
+    userId: "",
+    fullName: "",
+    email: "",
+    phone: "",
+    role: "RIDER",
+    platform: "BLINKIT",
+    city: "Visakhapatnam",
+    vehicle: "Two Wheeler"
   });
 
   const [settings, setSettings] = useState({
@@ -37,8 +41,79 @@ function Profile() {
     locationSharing: false
   });
 
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState("");
   const [message, setMessage] = useState("");
 
+  // Fetch the authenticated rider's profile
+  useEffect(() => {
+    const fetchProfile = async () => {
+      const token = localStorage.getItem("token");
+
+      if (!token) {
+        navigate("/login", { replace: true });
+        return;
+      }
+
+      try {
+        const response = await api.get("/user/profile");
+
+        const savedUser = JSON.parse(
+          localStorage.getItem("user") || "{}"
+        );
+
+        const backendUser = response.data;
+
+        const updatedProfile = {
+          userId: backendUser.userId || "",
+          fullName: backendUser.fullName || "",
+          email: backendUser.email || "",
+          phone: backendUser.phone || "",
+          role: backendUser.role || "RIDER",
+
+          // These fields are not yet stored in the backend.
+          platform: savedUser.platform || "BLINKIT",
+          city: savedUser.city || "Visakhapatnam",
+          vehicle: savedUser.vehicle || "Two Wheeler"
+        };
+
+        setProfile(updatedProfile);
+
+        localStorage.setItem(
+          "user",
+          JSON.stringify({
+            ...savedUser,
+            ...updatedProfile
+          })
+        );
+
+      } catch (err) {
+        console.error("Profile fetching failed:", err);
+
+        if (
+          err.response?.status === 401 ||
+          err.response?.status === 403
+        ) {
+          localStorage.removeItem("token");
+          localStorage.removeItem("user");
+
+          navigate("/login", { replace: true });
+        } else {
+          setError(
+            "Unable to load your profile. Please check your connection and try again."
+          );
+        }
+
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchProfile();
+  }, [navigate]);
+
+  // Handle profile input changes
   const handleChange = (event) => {
     const { name, value } = event.target;
 
@@ -46,8 +121,11 @@ function Profile() {
       ...previous,
       [name]: value
     }));
+
+    setMessage("");
   };
 
+  // Handle preference changes
   const handleSettingChange = (event) => {
     const { name, checked } = event.target;
 
@@ -57,18 +135,62 @@ function Profile() {
     }));
   };
 
+  // Save profile locally
   const saveProfile = (event) => {
     event.preventDefault();
 
-    const updatedUser = {
-      ...savedUser,
-      ...profile
-    };
+    setSaving(true);
+    setMessage("");
+    setError("");
 
-    localStorage.setItem("user", JSON.stringify(updatedUser));
+    try {
+      const savedUser = JSON.parse(
+        localStorage.getItem("user") || "{}"
+      );
 
-    setMessage("Profile updated successfully.");
+      const updatedUser = {
+        ...savedUser,
+        ...profile
+      };
+
+      localStorage.setItem(
+        "user",
+        JSON.stringify(updatedUser)
+      );
+
+      setMessage(
+        "Profile preferences saved on this device."
+      );
+
+    } catch (err) {
+      console.error("Profile saving failed:", err);
+      setError("Unable to save your profile.");
+    } finally {
+      setSaving(false);
+    }
   };
+
+  if (loading) {
+    return (
+      <div className="flex min-h-screen bg-slate-50">
+        <Sidebar />
+
+        <main className="flex-1 min-w-0">
+          <Header />
+
+          <div className="flex items-center justify-center min-h-[70vh]">
+            <div className="text-center">
+              <div className="w-10 h-10 border-4 border-green-600 border-t-transparent rounded-full animate-spin mx-auto" />
+
+              <p className="text-slate-500 mt-4">
+                Loading your profile...
+              </p>
+            </div>
+          </div>
+        </main>
+      </div>
+    );
+  }
 
   return (
     <div className="flex min-h-screen bg-slate-50">
@@ -90,6 +212,13 @@ function Profile() {
             </p>
           </section>
 
+          {/* Error message */}
+          {error && (
+            <div className="p-4 bg-red-50 border border-red-200 text-red-700 rounded-lg text-sm">
+              {error}
+            </div>
+          )}
+
           {/* Profile summary */}
           <section className="bg-white border border-slate-200 rounded-2xl p-6">
             <div className="flex flex-col sm:flex-row items-center gap-5">
@@ -107,7 +236,7 @@ function Profile() {
                   {profile.email || "Your email address"}
                 </p>
 
-                <div className="flex items-center justify-center sm:justify-start gap-2 mt-3">
+                <div className="flex items-center justify-center sm:justify-start gap-2 mt-3 flex-wrap">
                   <span className="bg-green-100 text-green-700 text-xs font-semibold px-3 py-1 rounded-full">
                     <CheckCircle size={13} className="inline mr-1" />
                     Registered Rider
@@ -131,7 +260,7 @@ function Profile() {
               </h2>
 
               <p className="text-sm text-slate-500 mt-1">
-                Update your account details.
+                View and manage your account details.
               </p>
             </div>
 
@@ -145,6 +274,7 @@ function Profile() {
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
 
+                {/* Full Name */}
                 <div>
                   <label className="block text-sm font-medium text-slate-700 mb-2">
                     Full Name
@@ -164,6 +294,7 @@ function Profile() {
                   </div>
                 </div>
 
+                {/* Email */}
                 <div>
                   <label className="block text-sm font-medium text-slate-700 mb-2">
                     Email Address
@@ -176,14 +307,17 @@ function Profile() {
                       type="email"
                       name="email"
                       value={profile.email}
-                      onChange={handleChange}
-                      required
-                      className="w-full border border-slate-300 rounded-lg pl-10 pr-3 py-3"
-                      placeholder="Enter your email"
+                      readOnly
+                      className="w-full border border-slate-300 rounded-lg pl-10 pr-3 py-3 bg-slate-100 text-slate-500 cursor-not-allowed"
                     />
                   </div>
+
+                  <p className="text-xs text-slate-400 mt-1">
+                    Email changes are not supported yet.
+                  </p>
                 </div>
 
+                {/* Phone */}
                 <div>
                   <label className="block text-sm font-medium text-slate-700 mb-2">
                     Phone Number
@@ -203,6 +337,7 @@ function Profile() {
                   </div>
                 </div>
 
+                {/* Platform */}
                 <div>
                   <label className="block text-sm font-medium text-slate-700 mb-2">
                     Delivery Platform
@@ -225,6 +360,7 @@ function Profile() {
                   </div>
                 </div>
 
+                {/* City */}
                 <div>
                   <label className="block text-sm font-medium text-slate-700 mb-2">
                     City
@@ -242,6 +378,7 @@ function Profile() {
                   </div>
                 </div>
 
+                {/* Vehicle */}
                 <div>
                   <label className="block text-sm font-medium text-slate-700 mb-2">
                     Vehicle Type
@@ -269,10 +406,11 @@ function Profile() {
               <div className="flex justify-end pt-3">
                 <button
                   type="submit"
-                  className="flex items-center gap-2 bg-green-600 hover:bg-green-700 text-white px-6 py-3 rounded-lg font-semibold"
+                  disabled={saving}
+                  className="flex items-center gap-2 bg-green-600 hover:bg-green-700 disabled:opacity-60 text-white px-6 py-3 rounded-lg font-semibold"
                 >
                   <Save size={18} />
-                  Save Changes
+                  {saving ? "Saving..." : "Save Changes"}
                 </button>
               </div>
 
@@ -300,6 +438,7 @@ function Profile() {
                     <h3 className="font-semibold text-slate-800">
                       Notifications
                     </h3>
+
                     <p className="text-sm text-slate-500">
                       Receive navigation and community notifications.
                     </p>
@@ -325,6 +464,7 @@ function Profile() {
                     <h3 className="font-semibold text-slate-800">
                       Route History Contribution
                     </h3>
+
                     <p className="text-sm text-slate-500">
                       Allow opted-in return journeys to contribute to route intelligence.
                     </p>
@@ -350,6 +490,7 @@ function Profile() {
                     <h3 className="font-semibold text-slate-800">
                       Location Sharing
                     </h3>
+
                     <p className="text-sm text-slate-500">
                       Allow temporary location sharing when you explicitly choose to share it.
                     </p>
@@ -392,42 +533,53 @@ function Profile() {
 
               <div className="flex items-center gap-3">
                 <ShieldCheck className="text-green-600" />
+
                 <div>
                   <p className="text-sm font-medium text-slate-800">
                     Account Security
                   </p>
+
                   <p className="text-xs text-slate-500">
-                    Authentication will be managed by the backend.
+                    Authentication is managed by the backend.
                   </p>
                 </div>
               </div>
 
               <div className="flex items-center gap-3">
                 <Lock className="text-blue-600" />
+
                 <div>
                   <p className="text-sm font-medium text-slate-800">
                     Password Protection
                   </p>
+
                   <p className="text-xs text-slate-500">
-                    Your password must never be stored in this profile page.
+                    Your password is securely managed by the backend.
                   </p>
                 </div>
               </div>
 
               <div className="flex items-center gap-3">
                 <Calendar className="text-purple-600" />
+
                 <div>
                   <p className="text-sm font-medium text-slate-800">
                     Account Type
                   </p>
+
                   <p className="text-xs text-slate-500">
-                    Delivery Partner
+                    {profile.role || "RIDER"} · Delivery Partner
                   </p>
                 </div>
               </div>
 
             </div>
           </section>
+
+          {/* Footer */}
+          <p className="text-center text-sm text-slate-400 pb-3">
+            RiderConnect © 2026. Smart assistance for delivery partners.
+          </p>
 
         </div>
       </main>

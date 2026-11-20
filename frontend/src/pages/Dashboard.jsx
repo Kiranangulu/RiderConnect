@@ -1,4 +1,7 @@
 
+import { useEffect, useState } from "react";
+import { Link, useNavigate } from "react-router-dom";
+
 import Sidebar from "../components/Sidebar";
 import Header from "../components/Header";
 import StatCard from "../components/StatCard";
@@ -17,8 +20,8 @@ import {
   Route
 } from "lucide-react";
 
-import { Link } from "react-router-dom";
 import { readData } from "../services/storage";
+import api from "../services/api";
 
 // Get today's date using local timezone
 function getToday() {
@@ -41,7 +44,54 @@ function formatCurrency(amount) {
 }
 
 function Dashboard() {
+  const navigate = useNavigate();
+
   const today = getToday();
+
+  // Logged-in rider profile
+  const [profile, setProfile] = useState(null);
+  const [profileLoading, setProfileLoading] = useState(true);
+
+  // Fetch authenticated rider profile from Spring Boot
+  useEffect(() => {
+    const fetchProfile = async () => {
+      const token = localStorage.getItem("token");
+
+      if (!token) {
+        navigate("/login", { replace: true });
+        return;
+      }
+
+      try {
+        const response = await api.get("/user/profile");
+
+        setProfile(response.data);
+
+        localStorage.setItem(
+          "user",
+          JSON.stringify(response.data)
+        );
+
+      } catch (error) {
+        console.error("Unable to fetch rider profile:", error);
+
+        if (
+          error.response?.status === 401 ||
+          error.response?.status === 403
+        ) {
+          localStorage.removeItem("token");
+          localStorage.removeItem("user");
+
+          navigate("/login", { replace: true });
+        }
+
+      } finally {
+        setProfileLoading(false);
+      }
+    };
+
+    fetchProfile();
+  }, [navigate]);
 
   // Read saved transactions
   const transactions = readData("transactions", []);
@@ -137,8 +187,16 @@ function Dashboard() {
               </h1>
 
               <p className="text-slate-500 mt-2">
-                Welcome back! Here's your delivery performance summary.
+                {profileLoading
+                  ? "Loading your profile..."
+                  : `Welcome back, ${profile?.fullName || "Rider"}! Here's your delivery performance summary.`}
               </p>
+
+              {profile && (
+                <p className="text-xs text-slate-400 mt-1">
+                  {profile.email} · {profile.role}
+                </p>
+              )}
             </div>
 
             <Link

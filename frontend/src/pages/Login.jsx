@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { Bike } from "lucide-react";
@@ -29,18 +30,31 @@ export default function Login() {
     try {
       const response = await api.post("/auth/login", form);
 
+      // Store JWT token
       localStorage.setItem("token", response.data.token);
-      localStorage.setItem(
-        "user",
-        JSON.stringify(response.data.user)
-      );
+
+      // Store rider details
+      const user = {
+        userId: response.data.userId,
+        fullName: response.data.fullName,
+        email: response.data.email,
+        role: response.data.role
+      };
+
+      localStorage.setItem("user", JSON.stringify(user));
 
       navigate("/dashboard");
+
     } catch (err) {
+      const errorMessage = err.response?.data;
+
       setError(
-        err.response?.data?.message ||
-        "Unable to login. Check your credentials."
+        typeof errorMessage === "string"
+          ? errorMessage
+          : errorMessage?.message ||
+            "Unable to login. Check your credentials."
       );
+
     } finally {
       setLoading(false);
     }
@@ -103,6 +117,7 @@ export default function Login() {
           )}
 
           <button
+            type="submit"
             disabled={loading}
             className="w-full bg-green-600 text-white rounded-lg p-3 hover:bg-green-700 disabled:opacity-50"
           >
